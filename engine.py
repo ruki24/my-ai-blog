@@ -21,7 +21,7 @@ def fetch_trending_topics():
     ]
 
 def generate_article(topic):
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     
     prompt = f"""
     以下のトピックについて、SEOに最適化された高品質なブログ記事を日本語で執筆してください。
@@ -117,12 +117,25 @@ def main():
         
     try:
         genai.configure(api_key=api_key)
+        
+        # 診断用のモデル一覧表示（エラー時に役立ちます）
+        try:
+            print("--- Available Models ---")
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    print(f"Name: {m.name}")
+            print("-------------------------")
+        except Exception as e:
+            print(f"Warning: Could not list models: {e}")
+
         topics = fetch_trending_topics()
         
         # 最初のトピックを使用
         topic = topics[0]
         print(f"Generating content for: {topic['title']}")
         
+        # モデル名は 'gemini-1.5-flash' に戻し、失敗時に 1.0 pro を試す等の保険も検討可能ですが
+        # まずは診断ログで何が利用可能か確認します
         article_data = generate_article(topic)
         save_as_html(topic, article_data)
         print("Success!")
