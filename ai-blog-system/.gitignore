@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+posts/*.html
+!posts/index.html
+.env
