@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
-posts/*.html
-!posts/index.html
+# 記事ファイルはGit管理に含める
+!posts/*.html
+!index.html
 .env
