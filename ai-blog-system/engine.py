@@ -3,11 +3,8 @@ import datetime
 import google.generativeai as genai
 
 # --- Configuration ---
-# APIキーは、GitHubのSecret（環境変数）または直接設定から取得します
-API_KEY = os.getenv("GEMINI_API_KEY")
-if not API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is not set")
-genai.configure(api_key=API_KEY)
+# APIキー設定（main内で実行）
+API_KEY = None
 
 TEMPLATE_PATH = "template.html"
 OUTPUT_DIR = "posts"
@@ -94,19 +91,29 @@ def update_index(topic, filepath):
 
 def main():
     print("Starting AI Blog Engine...")
-    topics = fetch_trending_topics()
     
-    # テストとして最初の1つだけ実行
-    topic = topics[0]
-    print(f"Generating content for: {topic['title']}")
-    
+    # 環境変数の詳細チェック
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("Error: GEMINI_API_KEY が設定されていません。GitHub Secrets を確認してください。")
+        exit(1)
+        
     try:
+        genai.configure(api_key=api_key)
+        topics = fetch_trending_topics()
+        
+        # テストとして最初の1つだけ実行
+        topic = topics[0]
+        print(f"Generating content for: {topic['title']}")
+        
         content = generate_article(topic)
         save_as_html(topic, content)
         print("Success!")
     except Exception as e:
-        print(f"Error: {e}")
-        print("Note: API_KEY が正しく設定されているか確認してください。")
+        print(f"Critical Error: {e}")
+        import traceback
+        traceback.print_exc()
+        exit(1) # ワークフローを失敗させるために 1 を返す
 
 if __name__ == "__main__":
     main()
