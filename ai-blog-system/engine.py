@@ -69,9 +69,12 @@ def update_index(topic, filepath):
     rel_path = os.path.relpath(filepath, ".")
     date_str = datetime.date.today().strftime("%Y-%m-%d")
     
+    # パス区切り文字を統一（f-string内でのバックスラッシュ使用を避けるため外で処理）
+    link_url = rel_path.replace("\\", "/")
+    
     new_entry = f"""
             <div class="glass p-6 transition hover:scale-[1.02]">
-                <a href="{rel_path.replace("\\", "/")}" class="block">
+                <a href="{link_url}" class="block">
                     <span class="text-xs text-indigo-400 font-bold uppercase">{topic['category']}</span>
                     <h2 class="text-2xl font-bold mt-2">{topic['title']}</h2>
                     <p class="text-slate-400 text-sm mt-2">{date_str}</p>
