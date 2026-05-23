@@ -21,7 +21,7 @@ def fetch_trending_topics():
     ]
 
 def generate_article(topic):
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    model = genai.GenerativeModel('gemini-flash-latest')
     
     prompt = f"""
     以下のトピックについて、SEOに最適化された高品質なブログ記事を日本語で執筆してください。
