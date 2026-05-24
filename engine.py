@@ -41,11 +41,27 @@ def generate_article(topic):
     - "content": 記事の本文（GitHub Pages用のマークダウン）
     - "note_draft": note.comのエディタに最適化されたプレーンテキスト形式の下書き
     - "slug": URL用スラッグ（例: ai-evolution-2026）
+    - "image_prompt": この記事の内容を表す、AI画像生成用の英語プロンプト（短い一文）
     """
     
     response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
     import json
     return json.loads(response.text)
+
+def download_image(prompt, save_path):
+    import requests
+    import urllib.parse
+    encoded_prompt = urllib.parse.quote(prompt)
+    url = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=512&seed=42&model=flux"
+    try:
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            with open(save_path, "wb") as f:
+                f.write(response.content)
+            return True
+    except Exception as e:
+        print(f"Image download failed: {e}")
+    return False
 
 def save_as_html(topic, article_data):
     import markdown
@@ -55,6 +71,20 @@ def save_as_html(topic, article_data):
     with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
         template = f.read()
     
+    # スラッグをファイル名に使用
+    slug = article_data.get('slug', 'article').lower().replace(' ', '-')
+    date_str = datetime.date.today().strftime('%Y%m%d')
+    
+    # 画像の生成と保存
+    image_filename = f"{date_str}_{slug}.jpg"
+    image_filepath = os.path.join(OUTPUT_DIR, image_filename)
+    header_image_url = f"posts/{image_filename}"
+    
+    print(f"Generating image for: {article_data.get('image_prompt')}")
+    if not download_image(article_data.get('image_prompt', 'Future technology'), image_filepath):
+        # 失敗時はプレースホルダー
+        header_image_url = "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&q=80&w=1024&h=512"
+
     # マークダウンをHTMLに変換
     html_content = markdown.markdown(article_data['content'])
     
@@ -63,44 +93,49 @@ def save_as_html(topic, article_data):
     html = html.replace("{{ category }}", topic['category'])
     html = html.replace("{{ date }}", datetime.date.today().strftime("%Y-%m-%d"))
     html = html.replace("{{ content }}", html_content)
+    html = html.replace("{{ header_image }}", header_image_url)
     
-    # スラッグをファイル名に使用（英数字+ハイフンのみ）
-    slug = article_data.get('slug', 'article').lower().replace(' ', '-')
-    filename = f"{datetime.date.today().strftime('%Y%m%d')}_{slug}.html"
+    filename = f"{date_str}_{slug}.html"
     filepath = os.path.join(OUTPUT_DIR, filename)
     
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html)
     
     # note用の下書き保存
-    note_filename = f"{datetime.date.today().strftime('%Y%m%d')}_{slug}_note.txt"
+    note_filename = f"{date_str}_{slug}_note.txt"
     note_filepath = os.path.join(OUTPUT_DIR, note_filename)
     with open(note_filepath, "w", encoding="utf-8") as f:
         f.write(f"タイトル: {article_data['title']}\n\n")
+        f.write(f"画像プロンプト: {article_data.get('image_prompt', '')}\n\n")
         f.write(article_data['note_draft'])
     
     print(f"Generated HTML: {filepath}")
     print(f"Generated Note Draft: {note_filepath}")
-    update_index(topic, article_data, filepath)
+    update_index(topic, article_data, filepath, header_image_url)
 
-def update_index(topic, article_data, filepath):
+def update_index(topic, article_data, filepath, header_image_url):
     INDEX_PATH = "index.html"
     rel_path = os.path.relpath(filepath, ".")
     date_str = datetime.date.today().strftime("%Y-%m-%d")
     
-    # パス区切り文字を統一（f-string内でのバックスラッシュ使用を避けるため外で処理）
+    # パス区切り文字を統一
     link_url = rel_path.replace("\\", "/")
+    img_url = header_image_url.replace("\\", "/")
     
     new_entry = f"""
-            <div class="glass p-6 transition hover:scale-[1.02]">
-                <a href="{link_url}" class="block">
-                    <span class="text-xs text-indigo-400 font-bold uppercase">{topic['category']}</span>
-                    <h2 class="text-2xl font-bold mt-2">{article_data['title']}</h2>
-                    <p class="text-slate-400 text-sm mt-2">{date_str}</p>
-                </a>
+            <div class="glass p-6 transition hover:scale-[1.02] flex flex-col md:flex-row gap-6">
+                <div class="md:w-1/3 h-48 rounded-xl overflow-hidden shadow-inner">
+                    <img src="{img_url}" alt="thumbnail" class="w-full h-full object-cover">
+                </div>
+                <div class="md:w-2/3">
+                    <a href="{link_url}" class="block h-full">
+                        <span class="text-xs text-indigo-400 font-bold uppercase">{topic['category']}</span>
+                        <h2 class="text-2xl font-bold mt-2">{article_data['title']}</h2>
+                        <p class="text-slate-400 text-sm mt-2">{date_str}</p>
+                    </a>
+                </div>
             </div>
     """
-    
     if os.path.exists(INDEX_PATH):
         with open(INDEX_PATH, "r", encoding="utf-8") as f:
             content = f.read()
