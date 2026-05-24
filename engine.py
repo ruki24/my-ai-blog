@@ -32,13 +32,15 @@ def generate_article(topic):
     - 読者の興味を引く導入文
     - 適切な見出し（## 見出し）の使用
     - 具体的なメリットや実例を含める
-    - 純粋なマークダウンテキストで構成してください。
+    - 【重要】後半には、トピックに関連する「役立つ道具や本」を3つ紹介するセクションを含めてください。
+    - 各商品は「商品名」「選定理由」「[Amazonで検索](https://www.amazon.co.jp/s?k=商品名)」の形式で記載してください。
     
     出力形式:
     以下の項目を含むJSON形式で出力してください。
     - "title": 記事のタイトル
-    - "content": 記事の本文（マークダウン形式）
-    - "slug": URLに使用する英数字とハイフンのみの短く適切なスラッグ（例: ai-evolution-2026）
+    - "content": 記事の本文（GitHub Pages用のマークダウン）
+    - "note_draft": note.comのエディタに最適化されたプレーンテキスト形式の下書き
+    - "slug": URL用スラッグ（例: ai-evolution-2026）
     """
     
     response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
@@ -70,7 +72,15 @@ def save_as_html(topic, article_data):
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html)
     
-    print(f"Generated: {filepath}")
+    # note用の下書き保存
+    note_filename = f"{datetime.date.today().strftime('%Y%m%d')}_{slug}_note.txt"
+    note_filepath = os.path.join(OUTPUT_DIR, note_filename)
+    with open(note_filepath, "w", encoding="utf-8") as f:
+        f.write(f"タイトル: {article_data['title']}\n\n")
+        f.write(article_data['note_draft'])
+    
+    print(f"Generated HTML: {filepath}")
+    print(f"Generated Note Draft: {note_filepath}")
     update_index(topic, article_data, filepath)
 
 def update_index(topic, article_data, filepath):
